@@ -8,6 +8,7 @@ library(tidyr)
 library(deSolve)
 library(DT)
 library(scales)
+library(rlang)
 
 # -------------------------------
 # Utilidades de simulación
@@ -101,6 +102,16 @@ run_stochastic <- function(population, init_I, init_E, init_R, gamma_base, sigma
   sims <- lapply(seq_len(simulations), sim_one)
   bind_rows(sims, .id = "sim_id") |>
     mutate(Modelo = "Estocástico")
+}
+
+accumulate_by <- function(dat, var) {
+  var <- rlang::as_string(ensym(var))
+  lvls <- sort(unique(dat[[var]]))
+  bind_rows(lapply(seq_along(lvls), function(i) {
+    dat %>%
+      filter(.data[[var]] <= lvls[i]) %>%
+      mutate(frame = lvls[i])
+  }))
 }
 
 # -------------------------------
@@ -204,6 +215,30 @@ ui <- tagList(
       fluidPage(
         br(),
         fluidRow(
+          column(9,
+                 tabsetPanel(
+                   tabPanel("Curvas y animación",
+                            plotlyOutput("plot_series", height = "640px"),
+                            br(),
+                            plotOutput("error_plot", height = "210px")
+                   ),
+                   tabPanel("Tasa de contagio (β)", plotlyOutput("beta_plot", height = "440px"))
+                 )
+          ),
+          column(3,
+                 wellPanel(
+                   h4(icon("gauge-high"), "Resumen"),
+                   br(),
+                   uiOutput("peak_inf"),
+                   uiOutput("peak_day"),
+                   uiOutput("final_R")
+                 )
+          )
+        ),
+        hr(),
+        fluidRow(
+          column(4,
+                 wellPanel(
           column(3,
                  wellPanel(
                    h4(icon("gear"), "Parámetros generales"),
@@ -229,6 +264,7 @@ ui <- tagList(
                    sliderInput("det_R0_init", "Recuperados iniciales", min = 0, max = 5000, value = 0)
                  )
           ),
+          column(4,
           column(5,
                  wellPanel(
                    h4(icon("random"), "Estocástico"),
@@ -252,6 +288,13 @@ ui <- tagList(
         ),
         hr(),
         fluidRow(
+          column(6,
+                 h4("Valores deterministas"),
+                 DTOutput("table_det")
+          ),
+          column(6,
+                 h4("Valores estocásticos (media)"),
+                 DTOutput("table_stoc")
           column(8,
                  tabsetPanel(
                    tabPanel("Curvas y animación",
@@ -366,6 +409,43 @@ server <- function(input, output, session) {
     req(nrow(df) > 0)
     df <- df |> filter(Compartimento %in% input$compartments)
 
+    palette <- c(
+      "Determinista.S" = "#42a5f5",
+      "Determinista.E" = "#ff9800",
+      "Determinista.I" = "#ef5350",
+      "Determinista.R" = "#66bb6a",
+      "Estocástico.S" = "#1976d2",
+      "Estocástico.E" = "#ffa726",
+      "Estocástico.I" = "#e53935",
+      "Estocástico.R" = "#43a047"
+    )
+
+    df_anim <- df |>
+      mutate(curve = interaction(Modelo, Compartimento),
+             curve = factor(curve, levels = names(palette))) |>
+      accumulate_by(frame)
+
+    plot_ly(
+      df_anim,
+      x = ~time,
+      y = ~Valor,
+      color = ~curve,
+      colors = unname(palette),
+      frame = ~frame,
+      type = "scatter",
+      mode = "lines",
+      hovertemplate = paste0("<b>%{color}</b><br>Día %{x}<br>Valor: %{y:,.0f}<extra></extra>")
+    ) %>%
+      layout(
+        title = list(text = "Trayectorias SEIR"),
+        xaxis = list(title = "Tiempo (días)"),
+        yaxis = list(title = "Individuos", rangemode = "tozero"),
+        plot_bgcolor = "#0f2033",
+        paper_bgcolor = "#0f2033",
+        font = list(color = "#e5ecf4"),
+        legend = list(orientation = "h", y = -0.18)
+      ) %>%
+      animation_opts(frame = 120, easing = "linear", redraw = FALSE, transition = 0)
     p <- ggplot(df, aes(x = time, y = Valor, color = interaction(Modelo, Compartimento), frame = frame)) +
       geom_line(size = 0.9, alpha = 0.9) +
       scale_color_manual(values = c(
