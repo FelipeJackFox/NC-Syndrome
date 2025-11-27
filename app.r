@@ -447,18 +447,19 @@ server <- function(input, output, session) {
       mutate(curve = interaction(Modelo, Compartimento),
              curve = factor(curve, levels = names(palette))) |>
       accumulate_by(frame)
-    
+
     plot_ly(
       df_anim,
       x = ~time,
       y = ~Valor,
       color = ~curve,
       colors = unname(palette),
+      text = ~curve,
       frame = ~frame,
       type = "scatter",
       mode = "lines",
       hovertemplate = paste0(
-        "<b>%{color}</b><br>Día %{x}<br>Valor: %{y:,.0f}<extra></extra>"
+        "<b>%{text}</b><br>Día %{x}<br>Valor: %{y:,.0f}<extra></extra>"
       )
     ) %>%
       layout(
