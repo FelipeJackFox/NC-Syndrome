@@ -239,6 +239,8 @@ ui <- tagList(
         fluidRow(
           column(4,
                  wellPanel(
+          column(3,
+                 wellPanel(
                    h4(icon("gear"), "Parámetros generales"),
                    sliderInput("population", "Población total", min = 1e5, max = 2e6, value = 1500000, step = 50000, sep = ","),
                    sliderInput("days", "Días de simulación", min = 30, max = 365, value = 200, step = 5),
@@ -263,6 +265,7 @@ ui <- tagList(
                  )
           ),
           column(4,
+          column(5,
                  wellPanel(
                    h4(icon("random"), "Estocástico"),
                    sliderInput("stoc_R0", "R0", min = 1, max = 6, value = 3.5, step = 0.1),
@@ -292,6 +295,32 @@ ui <- tagList(
           column(6,
                  h4("Valores estocásticos (media)"),
                  DTOutput("table_stoc")
+          column(8,
+                 tabsetPanel(
+                   tabPanel("Curvas y animación",
+                            plotlyOutput("plot_series", height = "500px"),
+                            br(),
+                            plotOutput("error_plot", height = "180px")
+                   ),
+                   tabPanel("Tasa de contagio (β)", plotlyOutput("beta_plot", height = "400px"))
+                 )
+          ),
+          column(4,
+                 tabsetPanel(
+                   tabPanel("Tablas",
+                            h4("Valores deterministas"),
+                            DTOutput("table_det"),
+                            hr(),
+                            h4("Valores estocásticos (media)"),
+                            DTOutput("table_stoc")
+                   ),
+                  tabPanel("Resumen",
+                            br(),
+                            uiOutput("peak_inf"),
+                            uiOutput("peak_day"),
+                            uiOutput("final_R")
+                   )
+                 )
           )
         )
       )
@@ -417,6 +446,30 @@ server <- function(input, output, session) {
         legend = list(orientation = "h", y = -0.18)
       ) %>%
       animation_opts(frame = 120, easing = "linear", redraw = FALSE, transition = 0)
+    p <- ggplot(df, aes(x = time, y = Valor, color = interaction(Modelo, Compartimento), frame = frame)) +
+      geom_line(size = 0.9, alpha = 0.9) +
+      scale_color_manual(values = c(
+        "Determinista.S" = "#42a5f5",
+        "Determinista.E" = "#ff9800",
+        "Determinista.I" = "#ef5350",
+        "Determinista.R" = "#66bb6a",
+        "Estocástico.S" = "#1976d2",
+        "Estocástico.E" = "#ffa726",
+        "Estocástico.I" = "#e53935",
+        "Estocástico.R" = "#43a047"
+      )) +
+      labs(title = "Trayectorias SEIR", subtitle = "Animación inicial basada en tiempo", x = "Tiempo (días)", y = "Individuos") +
+      scale_y_continuous(labels = comma) +
+      theme_minimal(base_size = 13) +
+      theme(plot.background = element_rect(fill = "#0f2033", colour = "#0f2033"),
+            panel.background = element_rect(fill = "#0f2033", colour = NA),
+            legend.position = "bottom",
+            legend.title = element_blank(),
+            text = element_text(colour = "#e5ecf4"))
+
+    ggplotly(p, tooltip = c("x", "y", "colour")) %>%
+      animation_opts(frame = 120, easing = "linear", redraw = FALSE) %>%
+      layout(legend = list(orientation = "h", y = -0.2))
   })
 
   output$beta_plot <- renderPlotly({
