@@ -115,14 +115,39 @@ body {background-color:#0b1624; color:#e5ecf4; padding-top:70px;}
 .table {color:#d9e3f3;}
 .btn-primary {background-color:#1e88e5; border-color:#1e88e5;}
 .btn-primary:hover {background-color:#42a5f5;}
+.param-card {border:1px solid #10304d; border-radius:6px; margin-bottom:15px;}
+.param-card .panel-heading {cursor:pointer; display:flex; justify-content:space-between; align-items:center; background-color:#0f2a44; color:#e5ecf4; border-bottom:1px solid #10304d; padding:10px 12px;}
+.param-card .panel-body {background-color:#0f2033;}
+.param-card .close-card {color:#9fb3c8; font-size:16px; margin-left:10px;}
+.param-card .close-card:hover {color:#ffffff;}
+.simulate-box {text-align:center; margin:10px 0 20px;}
 hr {border-top:1px solid #14406b;}
 "
+
+parameter_card <- function(card_id, title, body_content) {
+  collapse_id <- paste0(card_id, "-body")
+  div(
+    class = "param-card panel panel-default", id = card_id,
+    div(class = "panel-heading",
+        span(title),
+        span(
+          tags$a(href = paste0("#", collapse_id), `data-toggle` = "collapse",
+                 class = "text-info", icon("chevron-down")),
+          tags$a(href = "#", class = "close-card pull-right", icon("xmark"))
+        )
+    ),
+    div(id = collapse_id, class = "panel-collapse collapse in",
+        div(class = "panel-body", body_content)
+    )
+  )
+}
 
 ui <- tagList(
   tags$head(
     tags$style(HTML(header_css)),
     tags$link(rel = "stylesheet",
-              href = "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css")
+              href = "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"),
+    tags$script(HTML("$(document).on('click', '.close-card', function(e){e.preventDefault();$(this).closest('.param-card').remove();});"))
   ),
   navbarPage(
     title = "Modelos SEIR | Shiny",
@@ -139,6 +164,9 @@ ui <- tagList(
           column(12,
                  tabsetPanel(
                    tabPanel("Curvas SEIR",
+                           plotlyOutput("plot_series", height = "620px")),
+                   tabPanel("Curva animada",
+                            plotlyOutput("anim_plot", height = "620px")),
                             plotlyOutput("plot_series", height = "620px")),
                    tabPanel("Tasa de contagio (β)",
                             plotlyOutput("beta_plot", height = "620px"))
@@ -147,6 +175,72 @@ ui <- tagList(
         ),
         hr(),
         fluidRow(
+          column(4,
+                 parameter_card(
+                   "general-card",
+                   tagList(icon("gears"), " Parámetros generales"),
+                   tagList(
+                     sliderInput("population", "Población total (N)",
+                                 min = 1e5, max = 2e6, value = 1500000,
+                                 step = 50000, sep = ",")
+                   )
+                 )
+          ),
+          column(4,
+                 parameter_card(
+                   "det-card",
+                   tagList(icon("chart-line"), " Modelo determinista"),
+                   tagList(
+                     sliderInput("det_R0", "R0", min = 1, max = 6, value = 3.5, step = 0.1),
+                     sliderInput("det_gamma", "Gamma (recuperación)",
+                                 min = 0.05, max = 0.3, value = 0.143, step = 0.001),
+                     sliderInput("det_sigma", "Sigma (latencia)",
+                                 min = 0.05, max = 0.6, value = 0.25, step = 0.01),
+                     sliderInput("det_niu", "Natalidad/Mortalidad (niu)",
+                                 min = 0, max = 0.001, value = 0.0000245, step = 0.00001),
+                     sliderInput("det_v", "Vacunación (v)",
+                                 min = 0, max = 0.05, value = 0, step = 0.001),
+                     sliderInput("det_I0", "Infectados iniciales (I0)",
+                                 min = 1, max = 1000, value = 1),
+                     sliderInput("det_E0", "Expuestos iniciales (E0)",
+                                 min = 0, max = 2000, value = 0),
+                     sliderInput("det_R0_init", "Recuperados iniciales (R0)",
+                                 min = 0, max = 5000, value = 0),
+                     sliderInput("det_tmax", "Días de simulación", min = 30, max = 365, value = 200, step = 5)
+                   )
+                 )
+          ),
+          column(4,
+                 parameter_card(
+                   "stoc-card",
+                   tagList(icon("random"), " Modelo estocástico"),
+                   tagList(
+                     sliderInput("stoc_R0", "R0", min = 1, max = 6, value = 3.5, step = 0.1),
+                     sliderInput("stoc_gamma", "Gamma base", min = 0.05, max = 0.3, value = 0.143, step = 0.001),
+                     sliderInput("stoc_sigma", "Sigma base", min = 0.05, max = 0.6, value = 0.25, step = 0.01),
+                     sliderInput("stoc_niu", "Natalidad/Mortalidad (niu)", min = 0, max = 0.001,
+                                 value = 0.0000245, step = 0.00001),
+                     sliderInput("stoc_v", "Vacunación (v)", min = 0, max = 0.05, value = 0, step = 0.001),
+                     sliderInput("stoc_I0", "Infectados iniciales (I0)", min = 1, max = 2000, value = 5),
+                     sliderInput("stoc_E0", "Expuestos iniciales (E0)", min = 0, max = 2000, value = 0),
+                     sliderInput("stoc_R0_init", "Recuperados iniciales (R0)", min = 0, max = 5000, value = 0),
+                     sliderInput("stoc_fuerza", "Fuerza estacional", min = 0, max = 1, value = 0.4, step = 0.05),
+                     sliderInput("stoc_pico", "Pico estacional (día)", min = 0, max = 365, value = 75, step = 1),
+                     sliderInput("stoc_periodo", "Periodo estacional (días)", min = 30, max = 365, value = 365, step = 5),
+                     sliderInput("stoc_vol_beta", "Volatilidad contagio", min = 0, max = 1, value = 0.6, step = 0.05),
+                     sliderInput("stoc_vol_bio", "Volatilidad recuperación", min = 0, max = 1, value = 0.3, step = 0.05),
+                     sliderInput("stoc_dt", "Paso estocástico (dt)", min = 0.05, max = 1, value = 0.1, step = 0.05),
+                     sliderInput("stoc_sims", "Número de simulaciones", min = 1, max = 30, value = 1, step = 1),
+                     sliderInput("stoc_tmax", "Días de simulación", min = 30, max = 365, value = 200, step = 5)
+                   )
+                 )
+          )
+        ),
+        fluidRow(
+          column(12,
+                 div(class = "simulate-box",
+                     actionButton("simulate", label = "Simular", icon = icon("play"),
+                                  class = "btn-primary btn-lg")
           column(6,
                  wellPanel(
                    h4(icon("chart-line"), "Modelo determinista"),
@@ -265,6 +359,14 @@ server <- function(input, output, session) {
     bind_rows(det, st)
   })
 
+  animated_series <- reactive({
+    df <- combined_series()
+    tiempos <- sort(unique(df$time))
+    bind_rows(lapply(tiempos, function(tiempo) {
+      df |> filter(time <= tiempo) |> mutate(frame = tiempo)
+    }))
+  })
+
   output$plot_series <- renderPlotly({
     df <- combined_series()
     plot_ly(df, x = ~time, y = ~Valor, color = ~interaction(Modelo, Compartimento),
@@ -285,6 +387,40 @@ server <- function(input, output, session) {
              yaxis = list(title = "Individuos", rangemode = "tozero"),
              plot_bgcolor = "#0f2033", paper_bgcolor = "#0f2033",
              font = list(color = "#e5ecf4"))
+  })
+
+  output$anim_plot <- renderPlotly({
+    df <- animated_series()
+    plot_ly(df, x = ~time, y = ~Valor,
+            color = ~interaction(Modelo, Compartimento),
+            colors = c(
+              "Determinista.S" = "#42a5f5",
+              "Determinista.E" = "#ff9800",
+              "Determinista.I" = "#ef5350",
+              "Determinista.R" = "#66bb6a",
+              "Estocástico.S"  = "#1976d2",
+              "Estocástico.E"  = "#ffa726",
+              "Estocástico.I"  = "#e53935",
+              "Estocástico.R"  = "#43a047"
+            ),
+            frame = ~frame, type = "scatter", mode = "lines",
+            hovertemplate = paste0("<b>%{color}</b><br>Día %{x}<br>Valor: %{y:,.0f}<extra></extra>")) %>%
+      layout(title = list(text = "Evolución animada SEIR"),
+             xaxis = list(title = "Tiempo (días)"),
+             yaxis = list(title = "Individuos", rangemode = "tozero"),
+             plot_bgcolor = "#0f2033", paper_bgcolor = "#0f2033",
+             font = list(color = "#e5ecf4"),
+             updatemenus = list(list(
+               type = "buttons",
+               direction = "left",
+               x = 0.1, y = 1.1, showactive = FALSE,
+               buttons = list(
+                 list(method = "animate", args = list(NULL, list(frame = list(duration = 100, redraw = TRUE), fromcurrent = TRUE)),
+                      label = "Reproducir"),
+                 list(method = "animate", args = list(NULL, list(mode = "immediate", frame = list(duration = 0, redraw = TRUE), transition = list(duration = 0))),
+                      label = "Pausar")
+               )
+             )))
   })
 
   output$beta_plot <- renderPlotly({
