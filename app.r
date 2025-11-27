@@ -167,6 +167,7 @@ ui <- tagList(
                            plotlyOutput("plot_series", height = "620px")),
                    tabPanel("Curva animada",
                             plotlyOutput("anim_plot", height = "620px")),
+                            plotlyOutput("plot_series", height = "620px")),
                    tabPanel("Tasa de contagio (β)",
                             plotlyOutput("beta_plot", height = "620px"))
                  )
@@ -240,6 +241,52 @@ ui <- tagList(
                  div(class = "simulate-box",
                      actionButton("simulate", label = "Simular", icon = icon("play"),
                                   class = "btn-primary btn-lg")
+          column(6,
+                 wellPanel(
+                   h4(icon("chart-line"), "Modelo determinista"),
+                   sliderInput("population", "Población total (N)",
+                               min = 1e5, max = 2e6, value = 1500000,
+                               step = 50000, sep = ","),
+                   sliderInput("det_R0", "R0", min = 1, max = 6, value = 3.5, step = 0.1),
+                   sliderInput("det_gamma", "Gamma (recuperación)",
+                               min = 0.05, max = 0.3, value = 0.143, step = 0.001),
+                   sliderInput("det_sigma", "Sigma (latencia)",
+                               min = 0.05, max = 0.6, value = 0.25, step = 0.01),
+                   sliderInput("det_niu", "Natalidad/Mortalidad (niu)",
+                               min = 0, max = 0.001, value = 0.0000245, step = 0.00001),
+                   sliderInput("det_v", "Vacunación (v)",
+                               min = 0, max = 0.05, value = 0, step = 0.001),
+                   sliderInput("det_I0", "Infectados iniciales (I0)",
+                               min = 1, max = 1000, value = 1),
+                   sliderInput("det_E0", "Expuestos iniciales (E0)",
+                               min = 0, max = 2000, value = 0),
+                   sliderInput("det_R0_init", "Recuperados iniciales (R0)",
+                               min = 0, max = 5000, value = 0),
+                   sliderInput("det_tmax", "Días de simulación", min = 30, max = 365, value = 200, step = 5),
+                   actionButton("simulate", label = "Simular", icon = icon("play"),
+                                class = "btn-primary btn-block")
+                 )
+          ),
+          column(6,
+                 wellPanel(
+                   h4(icon("random"), "Modelo estocástico"),
+                   sliderInput("stoc_R0", "R0", min = 1, max = 6, value = 3.5, step = 0.1),
+                   sliderInput("stoc_gamma", "Gamma base", min = 0.05, max = 0.3, value = 0.143, step = 0.001),
+                   sliderInput("stoc_sigma", "Sigma base", min = 0.05, max = 0.6, value = 0.25, step = 0.01),
+                   sliderInput("stoc_niu", "Natalidad/Mortalidad (niu)", min = 0, max = 0.001,
+                               value = 0.0000245, step = 0.00001),
+                   sliderInput("stoc_v", "Vacunación (v)", min = 0, max = 0.05, value = 0, step = 0.001),
+                   sliderInput("stoc_I0", "Infectados iniciales (I0)", min = 1, max = 2000, value = 5),
+                   sliderInput("stoc_E0", "Expuestos iniciales (E0)", min = 0, max = 2000, value = 0),
+                   sliderInput("stoc_R0_init", "Recuperados iniciales (R0)", min = 0, max = 5000, value = 0),
+                   sliderInput("stoc_fuerza", "Fuerza estacional", min = 0, max = 1, value = 0.4, step = 0.05),
+                   sliderInput("stoc_pico", "Pico estacional (día)", min = 0, max = 365, value = 75, step = 1),
+                   sliderInput("stoc_periodo", "Periodo estacional (días)", min = 30, max = 365, value = 365, step = 5),
+                   sliderInput("stoc_vol_beta", "Volatilidad contagio", min = 0, max = 1, value = 0.6, step = 0.05),
+                   sliderInput("stoc_vol_bio", "Volatilidad recuperación", min = 0, max = 1, value = 0.3, step = 0.05),
+                   sliderInput("stoc_dt", "Paso estocástico (dt)", min = 0.05, max = 1, value = 0.1, step = 0.05),
+                   sliderInput("stoc_sims", "Número de simulaciones", min = 1, max = 30, value = 1, step = 1),
+                   sliderInput("stoc_tmax", "Días de simulación", min = 30, max = 365, value = 200, step = 5)
                  )
           )
         ),
